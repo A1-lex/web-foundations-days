@@ -90,3 +90,9 @@ FROM enrolments
 JOIN students ON students.id = enrolments.student_id
 JOIN courses  ON courses.id = enrolments.course_id
 WHERE students.name = 'Amina Otieno';
+
+-- Safe way to remove a student with enrolments:
+-- 1. Copy their enrolments into an archive table so the grades are kept.
+-- 2. Delete their rows from enrolments.
+-- 3. Delete the student row.
+-- RESTRICT blocks step 3 until step 2 is done, so nothing is lost by accident.

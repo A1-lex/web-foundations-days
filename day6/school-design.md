@@ -63,35 +63,3 @@ CREATE TABLE enrolments (
 );
 ```
 
-
-## Deletion rules
-
-Both foreign keys in `enrolments` use `ON DELETE RESTRICT`. A student or course that still has enrolments cannot be deleted. This protects academic records: removing a student or a course should never silently erase the grades attached to it. To remove someone, the school must first decide what happens to their enrolments, for example by archiving them. `ON DELETE CASCADE` would be shorter to write, but it would wipe historical transcripts in a single statement, so I rejected it for this system.
-
-## Schema summary
-
-The full script is in `school.sql`. These are the three tables:
-
-```sql
-CREATE TABLE students (
-  id    INTEGER PRIMARY KEY,
-  name  TEXT NOT NULL,
-  email TEXT NOT NULL UNIQUE
-);
-
-CREATE TABLE courses (
-  id      INTEGER PRIMARY KEY,
-  title   TEXT NOT NULL,
-  credits INTEGER NOT NULL
-);
-
-CREATE TABLE enrolments (
-  id         INTEGER PRIMARY KEY,
-  student_id INTEGER NOT NULL,
-  course_id  INTEGER NOT NULL,
-  grade      INTEGER CHECK (grade BETWEEN 0 AND 100),
-  FOREIGN KEY (student_id) REFERENCES students (id) ON DELETE RESTRICT,
-  FOREIGN KEY (course_id)  REFERENCES courses (id)  ON DELETE RESTRICT,
-  UNIQUE (student_id, course_id)
-);
-```
