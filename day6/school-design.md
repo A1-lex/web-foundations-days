@@ -30,3 +30,68 @@ CREATE INDEX idx_enrolments_course_id ON enrolments (course_id);
 ## SQL or NoSQL?
 
 I would choose SQL for this system. School data is highly structured and full of relationships: students, courses and enrolments link to each other, and the questions people ask involve joining them, such as who is on a course or who has no enrolments. A relational database answers these with simple joins and enforces the rules for me: unique emails, no double enrolments and no enrolment pointing at a student who does not exist. Transactions also keep changes safe, for example if a student is moved between courses and both steps must succeed together. A document database would suit data with a flexible shape that is mostly read as one whole record, but here the shape is fixed and the relationships matter more, so SQL is the better fit.
+
+## Deletion rules
+
+Both foreign keys in `enrolments` use `ON DELETE RESTRICT`. A student or course that still has enrolments cannot be deleted. This protects academic records: removing a student or a course should never silently erase the grades attached to it. To remove someone, the school must first decide what happens to their enrolments, for example by archiving them. `ON DELETE CASCADE` would be shorter to write, but it would wipe historical transcripts in a single statement, so I rejected it for this system.
+
+## Schema summary
+
+The full script is in `school.sql`. These are the three tables:
+
+```sql
+CREATE TABLE students (
+  id    INTEGER PRIMARY KEY,
+  name  TEXT NOT NULL,
+  email TEXT NOT NULL UNIQUE
+);
+
+CREATE TABLE courses (
+  id      INTEGER PRIMARY KEY,
+  title   TEXT NOT NULL,
+  credits INTEGER NOT NULL
+);
+
+CREATE TABLE enrolments (
+  id         INTEGER PRIMARY KEY,
+  student_id INTEGER NOT NULL,
+  course_id  INTEGER NOT NULL,
+  grade      INTEGER CHECK (grade BETWEEN 0 AND 100),
+  FOREIGN KEY (student_id) REFERENCES students (id) ON DELETE RESTRICT,
+  FOREIGN KEY (course_id)  REFERENCES courses (id)  ON DELETE RESTRICT,
+  UNIQUE (student_id, course_id)
+);
+```
+
+
+## Deletion rules
+
+Both foreign keys in `enrolments` use `ON DELETE RESTRICT`. A student or course that still has enrolments cannot be deleted. This protects academic records: removing a student or a course should never silently erase the grades attached to it. To remove someone, the school must first decide what happens to their enrolments, for example by archiving them. `ON DELETE CASCADE` would be shorter to write, but it would wipe historical transcripts in a single statement, so I rejected it for this system.
+
+## Schema summary
+
+The full script is in `school.sql`. These are the three tables:
+
+```sql
+CREATE TABLE students (
+  id    INTEGER PRIMARY KEY,
+  name  TEXT NOT NULL,
+  email TEXT NOT NULL UNIQUE
+);
+
+CREATE TABLE courses (
+  id      INTEGER PRIMARY KEY,
+  title   TEXT NOT NULL,
+  credits INTEGER NOT NULL
+);
+
+CREATE TABLE enrolments (
+  id         INTEGER PRIMARY KEY,
+  student_id INTEGER NOT NULL,
+  course_id  INTEGER NOT NULL,
+  grade      INTEGER CHECK (grade BETWEEN 0 AND 100),
+  FOREIGN KEY (student_id) REFERENCES students (id) ON DELETE RESTRICT,
+  FOREIGN KEY (course_id)  REFERENCES courses (id)  ON DELETE RESTRICT,
+  UNIQUE (student_id, course_id)
+);
+```

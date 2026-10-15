@@ -25,8 +25,8 @@ CREATE TABLE enrolments (
   student_id INTEGER NOT NULL,
   course_id  INTEGER NOT NULL,
   grade      INTEGER CHECK (grade BETWEEN 0 AND 100),
-  FOREIGN KEY (student_id) REFERENCES students (id) ON DELETE CASCADE,
-  FOREIGN KEY (course_id)  REFERENCES courses (id)  ON DELETE CASCADE,
+  FOREIGN KEY (student_id) REFERENCES students (id) ON DELETE RESTRICT,
+  FOREIGN KEY (course_id)  REFERENCES courses (id)  ON DELETE RESTRICT,
   UNIQUE (student_id, course_id)  -- same student cannot enrol on the same course twice
 );
 
