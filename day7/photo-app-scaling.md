@@ -56,7 +56,14 @@ At about 750 TB per year, storing photo files inside the database would cause pr
 
 Photos should go in **object storage**, which is cheap, durable and built for large files, and is easy to put behind a CDN. The database keeps only the **metadata**: photo id, owner, caption, time, and the storage key (the location of the file).
 
-## 5. Architecture diagram
+## 5. Trade-offs
+
+- **Cache speed against freshness:** the cache makes feeds fast, but a cached feed can be a few seconds or minutes out of date, so a new photo may not show up immediately. For a photo feed this delay is acceptable. For something like a bank balance it would not be.
+- **Replication lag and feed freshness:** the read replica takes load off the primary, but it copies data a moment after the primary, usually milliseconds and sometimes seconds. A user who uploads a photo and refreshes may not see it yet, because the replica has not received the new row. This is eventual consistency. Followers will not notice a photo arriving a few seconds late, so we accept it. For the uploader we read their own recent photos from the primary, so their own upload never seems to vanish.
+- **Queue and instant results:** the queue keeps uploads fast, but thumbnails are not ready instantly, so the app must show a "processing" state for a short time. It also adds one more system to run and monitor.
+- **CDN cost against speed:** a CDN cuts load time and server load, but it costs money for the traffic it carries, and a changed or deleted photo can stay cached until the cache expires.
+
+## 6. Architecture diagram
 
 ```
 Users
@@ -84,7 +91,7 @@ Users
   +--> writes (new photo rows) --> DB primary
 ```
 
-## 6. Components
+## 7. Components
 
 - **CDN:** serves photos and thumbnails from servers close to the user, so images load fast and our own servers carry less traffic.
 - **Load balancer:** spreads incoming requests across the app servers so no single server is overloaded, and stops sending traffic to servers that are down.
@@ -96,7 +103,7 @@ Users
 - **Queue:** holds thumbnail jobs, so the upload request can finish quickly and the slow work happens later.
 - **Worker:** takes jobs from the queue and creates the 50 KB thumbnails, and we can run more workers if the queue backs up.
 
-## 7. Upload flow
+## 8. Upload flow
 
 1. The user picks a photo and the app sends it to SnapShare.
 2. The load balancer routes the request to an app server.
@@ -110,11 +117,4 @@ Users
 10. The worker updates the database row to "ready" and stores the thumbnail key.
 11. The photo now appears in followers' feeds, and the CDN serves the thumbnail on request.
 
-If a worker fails, the message goes back on the queue and is retried. After several failures it moves to a separate failed-jobs queue for investigation, so one bad photo never blocks the others.
-
-## 8. Trade-offs
-
-- **Cache speed against freshness:** the cache makes feeds fast, but a cached feed can be a few seconds or minutes out of date, so a new photo may not show up immediately. For a photo feed this delay is acceptable. For something like a bank balance it would not be.
-- **Read replica and replication lag:** the replica takes load off the primary, but it copies data a moment after the primary, so a user might upload a photo and briefly not see it. We accept this delay in return for scaling reads.
-- **Queue and instant results:** the queue keeps uploads fast, but thumbnails are not ready instantly, so the app must show a "processing" state for a short time. It also adds one more system to run and monitor.
-- **CDN cost against speed:** a CDN cuts load time and server load, but it costs money for the traffic it carries, and a changed or deleted photo can stay cached until the cache expires.
+If a worker fails, the message goes back on the queue and is retried after a short delay. After several failures it moves to a failed-jobs queue for investigation, so one bad photo never blocks the others.
